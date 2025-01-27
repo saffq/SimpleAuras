@@ -10,26 +10,23 @@ local monitoredItems = {
     {name = "Bijou of the Eagle", type = "Bijou"},
 }
 
+local updateInterval = 1
+local timeSinceLastUpdate = 0
+
 local function OnLoad(self)
-    print("SimpleAuras załadowany!")
-    self:RegisterEvent("UNIT_AURA")
+    print("SimpleAuras loaded!")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 end
 
 local function OnEvent(self, event, ...)
-    if event == "UNIT_AURA" then
-        local unit = ...
-        if unit == "player" then
-            UpdateAuras()
-        end
-    elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
+    if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         UpdateAuras()
     end
 end
 
 local function IsInZulGurub()
-    local zone = GetRealZoneText()
+    local zone = GetZoneText()
     return zone == "Zul'Gurub"
 end
 
@@ -40,16 +37,19 @@ local function HasMonitoredItems()
     end
 
     for bag = 0, 4 do
-        for slot = 1, GetContainerNumSlots(bag) do
-            local itemLink = GetContainerItemLink(bag, slot)
-            if itemLink then
-                local itemID = GetContainerItemID(bag, slot)
-                if itemID then
-                    local itemName = GetItemInfo(itemID)
-                    if itemName then
-                        for _, monitoredItem in ipairs(monitoredItems) do
-                            if itemName == monitoredItem.name then
-                                itemCounts[monitoredItem.name] = itemCounts[monitoredItem.name] + 1
+        local numSlots = GetContainerNumSlots(bag)
+        if numSlots then
+            for slot = 1, numSlots do
+                local itemLink = GetContainerItemLink(bag, slot)
+                if itemLink then
+                    local itemID = GetContainerItemID(bag, slot)
+                    if itemID then
+                        local itemName = GetItemInfo(itemID)
+                        if itemName then
+                            for _, monitoredItem in ipairs(monitoredItems) do
+                                if itemName == monitoredItem.name then
+                                    itemCounts[monitoredItem.name] = itemCounts[monitoredItem.name] + 1
+                                end
                             end
                         end
                     end
@@ -93,25 +93,24 @@ function UpdateAuras()
 
                 if item.type == "Coin" then
                     offsetX = -100
-                    offsetY = 150 - (#monitoredItems * 10)
+                    offsetY = 150 - (table.getn(monitoredItems) * 10)
                 elseif item.type == "Bijou" then
                     offsetX = 100
-                    offsetY = 150 - (#monitoredItems * 10)
+                    offsetY = 150 - (table.getn(monitoredItems) * 10)
                 end
 
                 frame:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
                 frame.texture = frame:CreateTexture(nil, "BACKGROUND")
                 frame.texture:SetAllPoints(frame)
-                frame.texture:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
-                frame:Hide()
-            end
-
-            if itemCounts[item.name] > 0 then
                 if item.type == "Coin" then
                     frame.texture:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
                 elseif item.type == "Bijou" then
                     frame.texture:SetTexture("Interface\\Icons\\INV_Jewelry_Talisman_01")
                 end
+                frame:Hide()
+            end
+
+            if itemCounts[item.name] > 0 then
                 frame:Show()
             else
                 frame:Hide()
@@ -136,8 +135,16 @@ f.texture:SetAllPoints(f)
 f.texture:SetTexture("Interface\\Icons\\Spell_Nature_Regeneration")
 f:Hide()
 
-local frame = CreateFrame("Frame")
-frame:SetScript("OnEvent", OnEvent)
-frame:RegisterEvent("UNIT_AURA")
-frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+local eventFrame = CreateFrame("Frame")
+eventFrame:SetScript("OnEvent", OnEvent)
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+
+local updateFrame = CreateFrame("Frame")
+updateFrame:SetScript("OnUpdate", function(self, elapsed)
+    timeSinceLastUpdate = timeSinceLastUpdate + elapsed
+    if timeSinceLastUpdate >= updateInterval then
+        UpdateAuras()
+        timeSinceLastUpdate = 0
+    end
+end)
