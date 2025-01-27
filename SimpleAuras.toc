@@ -1,0 +1,8 @@
+## Interface: 11201
+## Title: SimpleAuras
+## Notes: Addon po mark of the wild i coino bijou z zg
+## Author: Mefedroniarz
+## Version: 1.0
+
+SimpleAuras.lua
+SimpleAuras.xml
